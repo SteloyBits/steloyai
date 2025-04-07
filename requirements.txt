@@ -1,0 +1,5 @@
+huggingface_hub
+streamlit
+nltk
+matplotlib
+requests
