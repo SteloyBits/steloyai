@@ -1,5 +1,5 @@
-huggingface_hub
-streamlit
-nltk
-matplotlib
+huggingface_hub==0.16.4
+streamlit==1.24.0
+nltk==3.8.1
+matplotlib==3.7.1
 requests
