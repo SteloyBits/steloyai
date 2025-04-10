@@ -7,14 +7,14 @@ class GradioInterface:
     def __init__(self):
         self.hub = HuggingFaceHubInterface()
         self.text_generator = TextGenerator(self.hub)
-        self.image_generator = ImageGenerator(self.hub)
+        #self.image_generator = ImageGenerator(self.hub)
         
     def create_interface(self):
         """Create the Gradio interface."""
         
-        with gr.Blocks(title="AI Unified Platform") as app:
-            gr.Markdown("# AI Unified Platform")
-            gr.Markdown("Your one-stop solution for AI tasks")
+        with gr.Blocks(title="Steloy AI") as app:
+            gr.Markdown("# STELOY AI")
+            gr.Markdown("Your one-stop solution for all AI tasks")
             
             with gr.Tab("Text Generation"):
                 with gr.Row():
@@ -54,7 +54,7 @@ class GradioInterface:
                     with gr.Column():
                         image_output = gr.Image(label="Generated Image")
                 
-                img_generate_btn.click(
+                #img_generate_btn.click(
                     fn=self.image_generator.generate,
                     inputs=[image_prompt, img_model_dropdown, steps, guidance_scale],
                     outputs=image_output
@@ -67,7 +67,7 @@ class GradioInterface:
     def launch(self, share=False, debug=False):
         """Launch the Gradio interface."""
         app = self.create_interface()
-        app.launch(share=share, debug=debug)
+        app.launch(share=True, debug=debug)
 
 
 if __name__ == "__main__":
