@@ -1,0 +1,32 @@
+text-generation:
+  - "meta-llama/Llama-2-7b-chat-hf"  # Primary choice
+  - "mistralai/Mistral-7B-Instruct-v0.2"  # Backup
+  - "gpt2-xl"  # Smaller fallback
+
+image-generation:
+  - "stabilityai/stable-diffusion-xl-base-1.0"
+  - "runwayml/stable-diffusion-v1-5"
+
+text-classification:
+  - "facebook/bart-large-mnli"
+  - "roberta-large-mnli"
+
+translation:
+  - "facebook/mbart-large-50-many-to-many-mmt"
+  - "t5-base"
+
+summarization:
+  - "facebook/bart-large-cnn"
+  - "t5-base"
+
+question-answering:
+  - "deepset/roberta-base-squad2"
+  - "distilbert-base-cased-distilled-squad"
+
+image-classification:
+  - "google/vit-base-patch16-224"
+  - "microsoft/resnet-50"
+
+speech-recognition:
+  - "facebook/wav2vec2-base-960h"
+  - "openai/whisper-small"
