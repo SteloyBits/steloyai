@@ -8,13 +8,12 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 # Import modules from the project
 try:
-    from src.nlp.text_generation import generate_text
-    from src.nlp.text_summarization import summarize_text
-    from src.nlp.sentiment_analysis import analyze_sentiment
-    from src.nlp.ner import extract_entities
-    from src.vision.image_generation import generate_image
-    from src.vision.image_captioning import caption_image
-    from src.vision.object_detection import detect_objects
+    from src.tasks.text_generation import generate
+    #from src.tasks.text_generation import summarize_text
+    #from src.tasks.text_generation import analyze_sentiment
+    #from src.tasks.text_generation import extract_entities
+    #from src.tasks.image_generation import generate_image
+    #from src.tasks.image_captioning import caption_image
     from src.utils.config import load_config
 except ImportError as e:
     st.error(f"Failed to import modules: {e}")
@@ -56,7 +55,7 @@ def render_nlp_section():
             if prompt:
                 with st.spinner("Generating text..."):
                     try:
-                        generated_text = generate_text(
+                        generated_text = generate(
                             prompt=prompt,
                             model=model,
                             max_length=max_length,
