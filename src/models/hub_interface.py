@@ -63,12 +63,8 @@ class HuggingFaceHubInterface:
         Returns:
             List of model information dictionaries
         """
-        models = self.api.list_models(
-            filter=ModelFilter(task=task),
-            limit=limit,
-            sort="downloads",
-            direction=-1
-        )
+        models = self.api.list_models(task="text-generation", limit=limit)
+        
         return [{"id": model.id, "downloads": model.downloads} for model in models]
     
     def download_model(self, model_id: str) -> str:
