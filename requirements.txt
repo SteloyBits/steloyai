@@ -1,6 +1,6 @@
 gradio>=4.0.0
 streamlit>=1.25.0
-huggingface-hub>=0.16.0
+huggingface-hub>=0.22.0
 transformers>=4.30.0
 torch>=2.0.0
 diffusers>=0.18.0
