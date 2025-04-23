@@ -8,7 +8,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 # Import modules from the project
 try:
-    from src.tasks.text_generation import TextGenerate
+    from src.tasks.text_generation import TextGenerator
     from models.hub_interface import HuggingFaceHubInterface
     #from src.tasks.text_generation import summarize_text
     #from src.tasks.text_generation import analyze_sentiment
