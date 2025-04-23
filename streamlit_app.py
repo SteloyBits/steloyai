@@ -8,7 +8,8 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 # Import modules from the project
 try:
-    from src.tasks.text_generation import generate
+    from src.tasks.text_generation import TextGenerate
+    from models.hub_interface import HuggingFaceHubInterface
     #from src.tasks.text_generation import summarize_text
     #from src.tasks.text_generation import analyze_sentiment
     #from src.tasks.text_generation import extract_entities
@@ -23,6 +24,8 @@ except ImportError as e:
 # Load configuration
 config = load_config()
 
+tg = TextGenerator(HuggingFaceHubInterface())
+    
 def set_page_config():
     """Configure the Streamlit page"""
     st.set_page_config(
@@ -55,7 +58,7 @@ def render_nlp_section():
             if prompt:
                 with st.spinner("Generating text..."):
                     try:
-                        generated_text = generate(
+                        generated_text = tg.generate(
                             prompt=prompt,
                             model=model,
                             max_length=max_length,
