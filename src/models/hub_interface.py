@@ -1,7 +1,7 @@
 import os
 from typing import Dict, List, Optional, Union
 import yaml
-from huggingface_hub import HfApi, ModelFilter, snapshot_download
+from huggingface_hub import HfApi, snapshot_download
 from transformers import AutoConfig, AutoModel, AutoProcessor
 
 class HuggingFaceHubInterface:
