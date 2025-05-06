@@ -6,8 +6,15 @@ import logging
 from datetime import datetime
 from huggingface_hub import ModelInfo
 
+# TODO: Consider implementing a proper database backend instead of JSON files
+# This would improve scalability and concurrent access handling
 class ModelRegistry:
-    """Registry for managing AI models and their metadata."""
+    """Registry for managing AI models and their metadata.
+    
+    This class provides a centralized registry for managing model metadata,
+    task mappings, user preferences, and usage statistics. It uses a JSON file
+    for persistence but could be extended to use a proper database.
+    """
     
     def __init__(self, config_dir: str = "./config", registry_file: str = "model_registry.json"):
         """Initialize the model registry.
@@ -29,6 +36,9 @@ class ModelRegistry:
         
         Returns:
             Dictionary containing model registry data
+            
+        TODO: Add proper error handling and recovery mechanisms
+        TODO: Consider implementing file locking for concurrent access
         """
         if os.path.exists(self.registry_path):
             try:
@@ -43,7 +53,9 @@ class ModelRegistry:
         """Initialize an empty registry structure.
         
         Returns:
-            Empty registry dictionary
+            Empty registry dictionary with default structure
+            
+        TODO: Consider moving default structure to a configuration file
         """
         registry = {
             "models": {},
@@ -75,6 +87,9 @@ class ModelRegistry:
         
         Args:
             registry: Registry data to save, if None uses self.registry
+            
+        TODO: Implement atomic file writing to prevent corruption
+        TODO: Add backup mechanism before saving
         """
         if registry is None:
             registry = self.registry
@@ -94,6 +109,9 @@ class ModelRegistry:
             model_id: HuggingFace model ID
             task: Task the model is used for
             metadata: Additional metadata about the model
+            
+        TODO: Add validation for model_id and task
+        TODO: Consider adding versioning support
         """
         if metadata is None:
             metadata = {}
@@ -142,6 +160,9 @@ class ModelRegistry:
         Args:
             model_id: HuggingFace model ID
             metadata: New metadata to update
+            
+        TODO: Add validation for metadata structure
+        TODO: Consider adding audit logging for metadata changes
         """
         if model_id in self.registry["models"]:
             self.registry["models"][model_id]["metadata"].update(metadata)
@@ -155,6 +176,9 @@ class ModelRegistry:
         Args:
             model_info: ModelInfo object from HuggingFace Hub
             task: Task the model is used for
+            
+        TODO: Add more metadata fields from ModelInfo
+        TODO: Consider adding validation for model compatibility with task
         """
         metadata = {
             "description": model_info.description,
@@ -175,6 +199,9 @@ class ModelRegistry:
             
         Returns:
             List of model entries sorted by priority
+            
+        TODO: Add caching for frequently accessed task lists
+        TODO: Consider adding filtering options
         """
         if task in self.registry["task_mappings"]:
             # Sort by priority
@@ -190,6 +217,9 @@ class ModelRegistry:
             
         Returns:
             Model ID or None if no models are registered for the task
+            
+        TODO: Consider adding model performance metrics to influence selection
+        TODO: Add support for user-specific model preferences
         """
         models = self.get_models_for_task(task)
         if models:
@@ -204,6 +234,9 @@ class ModelRegistry:
             task: Task to set priority for
             model_id: Model ID to set priority for
             priority: New priority value (0 = highest priority)
+            
+        TODO: Add validation for priority values
+        TODO: Consider adding priority change history
         """
         if task not in self.registry["task_mappings"]:
             self.logger.warning(f"Task {task} not found in registry")
@@ -284,6 +317,9 @@ class ModelRegistry:
             user_id: ID of the user
             task: Task to set preference for
             model_id: ID of the preferred model
+            
+        TODO: Add validation for user_id and model_id
+        TODO: Consider adding preference expiration
         """
         if user_id not in self.registry["user_preferences"]:
             self.registry["user_preferences"][user_id] = {}
@@ -300,6 +336,9 @@ class ModelRegistry:
             
         Returns:
             Model ID or None if no preference is set
+            
+        TODO: Add caching for frequently accessed preferences
+        TODO: Consider adding preference inheritance from groups
         """
         if (user_id in self.registry["user_preferences"] and 
             task in self.registry["user_preferences"][user_id]):
@@ -315,6 +354,9 @@ class ModelRegistry:
             
         Returns:
             Dictionary with usage statistics by date
+            
+        TODO: Add aggregation functions for statistics
+        TODO: Consider adding export functionality for analysis
         """
         if days is None:
             return self.registry["usage_statistics"]

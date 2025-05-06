@@ -1,10 +1,20 @@
 import os
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Any
 import yaml
 from huggingface_hub import HfApi, snapshot_download
 from transformers import AutoConfig, AutoModel, AutoProcessor
+from src.utils import load_config
 
+# TODO: Consider creating a separate ModelLoader class to handle model loading logic
+# This would improve separation of concerns and make the code more modular
 class HuggingFaceHubInterface:
+    """Interface for interacting with HuggingFace Hub models.
+    
+    This class provides methods for searching, downloading, and loading models
+    from the HuggingFace Hub. It maintains a cache of downloaded models and
+    provides access to task-specific model configurations.
+    """
+    
     def __init__(self, cache_dir: str = "./.model_cache"):
         """Initialize the HuggingFace Hub interface.
         
@@ -19,25 +29,28 @@ class HuggingFaceHubInterface:
         os.makedirs(self.cache_dir, exist_ok=True)
     
     def _load_best_models(self) -> Dict[str, List[str]]:
-        """Load the best models for each task from config."""
+        """Load the best models for each task from config.
+        
+        Returns:
+            Dictionary mapping tasks to lists of model IDs
+        """
         config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
                                   "config", "default_models.yaml")
         
-        if os.path.exists(config_path):
-            with open(config_path, 'r') as f:
-                return yaml.safe_load(f)
-        else:
-            # Default configurations if file doesn't exist
-            return {
-                "text-generation": ["meta-llama/Llama-2-7b-chat-hf", "mistralai/Mistral-7B-Instruct-v0.2"],
-                "image-generation": ["stabilityai/stable-diffusion-xl-base-1.0", "runwayml/stable-diffusion-v1-5"],
-                "text-classification": ["facebook/bart-large-mnli", "roberta-large-mnli"],
-                "translation": ["facebook/mbart-large-50-many-to-many-mmt", "t5-base"],
-                "summarization": ["facebook/bart-large-cnn", "t5-base"],
-                "question-answering": ["deepset/roberta-base-squad2", "distilbert-base-cased-distilled-squad"],
-                "image-classification": ["google/vit-base-patch16-224", "microsoft/resnet-50"],
-                "speech-recognition": ["facebook/wav2vec2-base-960h", "openai/whisper-small"],
-            }
+        # TODO: Move default configurations to a separate config file
+        # This would make it easier to maintain and update model lists
+        default_config = {
+            "text-generation": ["meta-llama/Llama-2-7b-chat-hf", "mistralai/Mistral-7B-Instruct-v0.2"],
+            "image-generation": ["stabilityai/stable-diffusion-xl-base-1.0", "runwayml/stable-diffusion-v1-5"],
+            "text-classification": ["facebook/bart-large-mnli", "roberta-large-mnli"],
+            "translation": ["facebook/mbart-large-50-many-to-many-mmt", "t5-base"],
+            "summarization": ["facebook/bart-large-cnn", "t5-base"],
+            "question-answering": ["deepset/roberta-base-squad2", "distilbert-base-cased-distilled-squad"],
+            "image-classification": ["google/vit-base-patch16-224", "microsoft/resnet-50"],
+            "speech-recognition": ["facebook/wav2vec2-base-960h", "openai/whisper-small"],
+        }
+        
+        return load_config(config_path, default_config)
     
     def get_best_model_for_task(self, task: str) -> str:
         """Get the best model for a specific task.
@@ -47,13 +60,16 @@ class HuggingFaceHubInterface:
             
         Returns:
             The model ID for the best model for the task
+            
+        Raises:
+            ValueError: If no models are found for the task
         """
         if task in self.task_to_best_models:
             return self.task_to_best_models[task][0]  # Return the first (best) model
         else:
             raise ValueError(f"No models found for task: {task}")
     
-    def search_models(self, task: str, limit: int = 10) -> List[Dict]:
+    def search_models(self, task: str, limit: int = 10) -> List[Dict[str, Any]]:
         """Search for models suitable for a specific task.
         
         Args:
@@ -61,7 +77,7 @@ class HuggingFaceHubInterface:
             limit: Maximum number of models to return
             
         Returns:
-            List of model information dictionaries
+            List of model information dictionaries containing id and downloads
         """
         models = self.api.list_models(
             task=task,
@@ -86,7 +102,7 @@ class HuggingFaceHubInterface:
             local_files_only=False
         )
     
-    def load_model_for_task(self, task: str, model_id: Optional[str] = None) -> Dict:
+    def load_model_for_task(self, task: str, model_id: Optional[str] = None) -> Dict[str, Any]:
         """Load a model for a specific task.
         
         Args:
@@ -94,14 +110,22 @@ class HuggingFaceHubInterface:
             model_id: Specific model ID to load (if None, uses the best model)
             
         Returns:
-            Dictionary with model, processor, and config
+            Dictionary containing:
+                - model: The loaded model
+                - processor: The model's processor (if applicable)
+                - config: The model's configuration
+                - model_id: The ID of the loaded model
+                
+        TODO: Consider splitting this into separate methods for different model types
+        to improve maintainability and reduce complexity
         """
         if model_id is None:
             model_id = self.get_best_model_for_task(task)
         
         model_path = self.download_model(model_id)
         
-        # Get appropriate model and processor based on task
+        # TODO: Create a ModelLoader class to handle different model types
+        # This would make the code more modular and easier to extend
         if task == "image-generation":
             # For diffusion models, we'll need special handling
             from diffusers import StableDiffusionPipeline
