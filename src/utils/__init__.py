@@ -8,5 +8,6 @@ from .logging import setup_logger
 
 __all__ = [
     'load_config',
-    'save_config'
+    'save_config',
+    'setup_logger'
 ]
