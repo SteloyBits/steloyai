@@ -2,6 +2,7 @@ import streamlit as st
 import os
 import sys
 from pathlib import Path
+from datetime import datetime
 
 # Add the project root to the path to import project modules
 sys.path.append(str(Path(__file__).parent.parent))
@@ -17,16 +18,25 @@ try:
     #from src.tasks.image_captioning import caption_image
     from src.utils.config import load_config
     from src.utils.model_verification import get_verified_config
+    from src.utils.prompt_manager import PromptManager
 except ImportError as e:
     st.error(f"Failed to import modules: {e}")
     st.info("Make sure you run this app from the project root directory")
     sys.exit(1)
 
+# Initialize session state for chat management
+if 'prompt_manager' not in st.session_state:
+    history_dir = os.path.join(os.path.dirname(__file__), "chat_history")
+    st.session_state.prompt_manager = PromptManager(history_dir=history_dir)
+    if not st.session_state.prompt_manager.current_session:
+        st.session_state.prompt_manager.create_new_session()
+
 # Load configuration with verified models
 config_path = os.path.join(os.path.dirname(__file__), "config", "app_config.yaml")
 config = get_verified_config()
 
-tg = TextGenerator(HuggingFaceHubInterface())
+# Initialize text generator with prompt manager
+tg = TextGenerator(HuggingFaceHubInterface(), st.session_state.prompt_manager)
     
 def set_page_config():
     """Configure the Streamlit page"""
@@ -40,6 +50,45 @@ def set_page_config():
     st.sidebar.title("SteloyAI Platform")
     st.sidebar.markdown("Your unified AI platform for NLP and vision tasks")
 
+def render_chat_management():
+    """Render chat management section in sidebar."""
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("Chat Management")
+    
+    # New chat button
+    if st.sidebar.button("New Chat"):
+        st.session_state.prompt_manager.create_new_session()
+        st.experimental_rerun()
+    
+    # List of existing chats
+    st.sidebar.markdown("### Recent Chats")
+    sessions = st.session_state.prompt_manager.get_session_list()
+    
+    if not sessions:
+        st.sidebar.info("No chat history available")
+        return
+        
+    # Sort sessions by last updated
+    sessions.sort(key=lambda x: x['last_updated'], reverse=True)
+    
+    # Display each session
+    for session in sessions:
+        col1, col2 = st.sidebar.columns([3, 1])
+        
+        with col1:
+            # Format the title with date
+            last_updated = datetime.fromisoformat(session['last_updated'])
+            title = f"{session['title']} ({last_updated.strftime('%Y-%m-%d %H:%M')})"
+            
+            if st.button(title, key=f"chat_{session['id']}"):
+                st.session_state.prompt_manager.switch_session(session['id'])
+                st.experimental_rerun()
+        
+        with col2:
+            if st.button("🗑️", key=f"delete_{session['id']}"):
+                st.session_state.prompt_manager.delete_session(session['id'])
+                st.experimental_rerun()
+
 def render_nlp_section():
     """Render the NLP section of the app"""
     st.header("Natural Language Processing")
@@ -51,6 +100,11 @@ def render_nlp_section():
     
     if nlp_task == "Text Generation":
         st.subheader("Text Generation")
+        
+        # Display current chat title
+        if st.session_state.prompt_manager.current_session:
+            st.markdown(f"### Current Chat: {st.session_state.prompt_manager.current_session.title}")
+        
         prompt = st.text_area("Enter your prompt:", height=150)
         
         # Check if there are available models
@@ -58,9 +112,13 @@ def render_nlp_section():
             st.error("No text generation models are currently available. Please try again later.")
             return
             
-        model = st.selectbox("Select Model", config["text_generation"]["available_models"])
-        max_length = st.slider("Maximum Length", min_value=10, max_value=1000, value=200)
-        temperature = st.slider("Temperature", min_value=0.1, max_value=1.0, value=0.7, step=0.1)
+        col1, col2 = st.columns(2)
+        with col1:
+            model = st.selectbox("Select Model", config["text_generation"]["available_models"])
+            max_length = st.slider("Maximum Length", min_value=10, max_value=1000, value=200)
+        with col2:
+            temperature = st.slider("Temperature", min_value=0.1, max_value=1.0, value=0.7, step=0.1)
+            style = st.selectbox("Response Style", ["default", "einstein", "scholar"])
         
         if st.button("Generate Text"):
             if prompt:
@@ -70,7 +128,8 @@ def render_nlp_section():
                             prompt=prompt,
                             model_id=model,
                             max_length=max_length,
-                            temperature=temperature
+                            temperature=temperature,
+                            style=style
                         )
                         st.success("Text Generated Successfully!")
                         st.markdown("### Generated Text")
@@ -317,6 +376,7 @@ def render_about_section():
 
 def main():
     set_page_config()
+    render_chat_management()
     
     # Navigation in sidebar
     page = st.sidebar.radio(

@@ -76,31 +76,46 @@ class TextGenerator:
         tokenizer = model_dict["tokenizer"]
         
         # Prepare the input with conversation context
-        conversation_text = "\n".join([f"{msg['role']}: {msg['content']}" for msg in context])
+        conversation_text = "\n".join([
+            f"{msg['role'].upper()}: {msg['content']}"
+            for msg in context
+        ])
+        
+        # Add a clear instruction for the model
+        conversation_text += "\nASSISTANT: I will now provide a direct answer to the question."
+        
         inputs = tokenizer(conversation_text, return_tensors="pt")
         if torch.cuda.is_available():
             inputs = {k: v.to("cuda") for k, v in inputs.items()}
         
-        # Generate
+        # Generate with more focused parameters
         with torch.no_grad():
             output = model.generate(
                 **inputs,
                 max_length=max_length,
                 temperature=temperature,
                 do_sample=True,
-                top_p=0.95,
-                top_k=50,
-                num_return_sequences=1
+                top_p=0.92,  # Slightly reduced for more focused responses
+                top_k=40,    # Reduced for more focused responses
+                num_return_sequences=1,
+                repetition_penalty=1.2,  # Added to reduce repetition
+                length_penalty=1.0,      # Added to encourage complete answers
+                no_repeat_ngram_size=3   # Added to reduce repetition
             )
         
         # Decode and return
         generated_text = tokenizer.decode(output[0], skip_special_tokens=True)
         
-        # Add assistant's response to history
-        self.prompt_manager.add_message('assistant', generated_text)
-        
-        # Some models include the prompt in the output, so we remove it if necessary
+        # Clean up the response
         if generated_text.startswith(conversation_text):
             generated_text = generated_text[len(conversation_text):].strip()
+        
+        # Remove any remaining role prefixes
+        for prefix in ["ASSISTANT:", "Answer:", "Question:"]:
+            if generated_text.startswith(prefix):
+                generated_text = generated_text[len(prefix):].strip()
+        
+        # Add assistant's response to history
+        self.prompt_manager.add_message('assistant', generated_text)
             
         return generated_text
