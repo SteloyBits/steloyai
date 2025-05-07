@@ -84,7 +84,7 @@ def render_nlp_section():
                     try:
                         generated_text = tg.generate(
                             prompt=prompt,
-                            model=model,
+                            model_id=model,
                             max_length=max_length,
                             temperature=temperature
                         )
