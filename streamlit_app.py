@@ -55,14 +55,26 @@ def render_chat_management():
     st.sidebar.markdown("---")
     st.sidebar.subheader("Chat Management")
     
+    # Search functionality
+    search_query = st.sidebar.text_input("Search chats", "")
+    if search_query:
+        sessions = st.session_state.prompt_manager.search_sessions(search_query)
+    else:
+        sessions = st.session_state.prompt_manager.get_session_list()
+    
     # New chat button
-    if st.sidebar.button("New Chat"):
-        st.session_state.prompt_manager.create_new_session()
-        st.experimental_rerun()
+    col1, col2 = st.sidebar.columns([3, 1])
+    with col1:
+        if st.button("New Chat"):
+            st.session_state.prompt_manager.create_new_session()
+            st.experimental_rerun()
+    with col2:
+        if st.button("Clear Current", help="Clear messages in current chat"):
+            if st.session_state.prompt_manager.clear_current_session():
+                st.experimental_rerun()
     
     # List of existing chats
     st.sidebar.markdown("### Recent Chats")
-    sessions = st.session_state.prompt_manager.get_session_list()
     
     if not sessions:
         st.sidebar.info("No chat history available")
@@ -73,21 +85,40 @@ def render_chat_management():
     
     # Display each session
     for session in sessions:
-        col1, col2 = st.sidebar.columns([3, 1])
-        
-        with col1:
+        with st.sidebar.expander(f"{session['title']} ({session['message_count']} messages)"):
             # Format the title with date
             last_updated = datetime.fromisoformat(session['last_updated'])
-            title = f"{session['title']} ({last_updated.strftime('%Y-%m-%d %H:%M')})"
+            created_at = datetime.fromisoformat(session['created_at'])
             
-            if st.button(title, key=f"chat_{session['id']}"):
-                st.session_state.prompt_manager.switch_session(session['id'])
-                st.experimental_rerun()
-        
-        with col2:
-            if st.button("🗑️", key=f"delete_{session['id']}"):
-                st.session_state.prompt_manager.delete_session(session['id'])
-                st.experimental_rerun()
+            # Display session info
+            st.write(f"Created: {created_at.strftime('%Y-%m-%d %H:%M')}")
+            st.write(f"Last updated: {last_updated.strftime('%Y-%m-%d %H:%M')}")
+            
+            # Get session stats
+            stats = st.session_state.prompt_manager.get_session_stats(session['id'])
+            if stats:
+                st.write(f"Total messages: {stats['total_messages']}")
+                st.write(f"User messages: {stats['user_messages']}")
+                st.write(f"Assistant messages: {stats['assistant_messages']}")
+            
+            # Session actions
+            col1, col2, col3 = st.columns([2, 2, 1])
+            
+            with col1:
+                if st.button("Switch", key=f"switch_{session['id']}"):
+                    st.session_state.prompt_manager.switch_session(session['id'])
+                    st.experimental_rerun()
+            
+            with col2:
+                new_title = st.text_input("New title", session['title'], key=f"title_{session['id']}")
+                if new_title != session['title']:
+                    st.session_state.prompt_manager.update_session_title(session['id'], new_title)
+                    st.experimental_rerun()
+            
+            with col3:
+                if st.button("🗑️", key=f"delete_{session['id']}"):
+                    st.session_state.prompt_manager.delete_session(session['id'])
+                    st.experimental_rerun()
 
 def render_nlp_section():
     """Render the NLP section of the app"""

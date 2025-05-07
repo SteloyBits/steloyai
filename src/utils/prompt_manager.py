@@ -208,8 +208,8 @@ class PromptManager:
             {
                 'id': session.id,
                 'title': session.title,
-                'created_at': session.created_at,
-                'last_updated': session.last_updated,
+                'created_at': session.created_at.isoformat(),
+                'last_updated': session.last_updated.isoformat(),
                 'message_count': len(session.messages)
             }
             for session in self.sessions.values()
@@ -268,4 +268,97 @@ class PromptManager:
             if self.history_dir:
                 self.save_sessions()
             return True
-        return False 
+        return False
+
+    def update_session_title(self, session_id: str, new_title: str) -> bool:
+        """Update the title of a chat session.
+        
+        Args:
+            session_id: The ID of the session to update
+            new_title: The new title for the session
+            
+        Returns:
+            True if successful, False if session not found
+        """
+        if session_id in self.sessions:
+            self.sessions[session_id].title = new_title
+            self.sessions[session_id].last_updated = datetime.now()
+            if self.history_dir:
+                self.save_sessions()
+            return True
+        return False
+
+    def clear_current_session(self) -> bool:
+        """Clear all messages from the current session.
+        
+        Returns:
+            True if successful, False if no current session
+        """
+        if not self.current_session:
+            return False
+            
+        self.current_session.messages = []
+        self.current_session.last_updated = datetime.now()
+        if self.history_dir:
+            self.save_sessions()
+        return True
+
+    def search_sessions(self, query: str) -> List[Dict]:
+        """Search sessions by title or content.
+        
+        Args:
+            query: Search query string
+            
+        Returns:
+            List of matching sessions
+        """
+        query = query.lower()
+        matching_sessions = []
+        
+        for session in self.sessions.values():
+            # Search in title
+            if query in session.title.lower():
+                matching_sessions.append(session)
+                continue
+                
+            # Search in message content
+            for message in session.messages:
+                if query in message.content.lower():
+                    matching_sessions.append(session)
+                    break
+                    
+        return [
+            {
+                'id': session.id,
+                'title': session.title,
+                'created_at': session.created_at.isoformat(),
+                'last_updated': session.last_updated.isoformat(),
+                'message_count': len(session.messages)
+            }
+            for session in matching_sessions
+        ]
+
+    def get_session_stats(self, session_id: str) -> Optional[Dict]:
+        """Get statistics for a specific session.
+        
+        Args:
+            session_id: The ID of the session
+            
+        Returns:
+            Dictionary containing session statistics or None if session not found
+        """
+        if session_id not in self.sessions:
+            return None
+            
+        session = self.sessions[session_id]
+        user_messages = sum(1 for msg in session.messages if msg.role == 'user')
+        assistant_messages = sum(1 for msg in session.messages if msg.role == 'assistant')
+        
+        return {
+            'total_messages': len(session.messages),
+            'user_messages': user_messages,
+            'assistant_messages': assistant_messages,
+            'created_at': session.created_at.isoformat(),
+            'last_updated': session.last_updated.isoformat(),
+            'duration': (session.last_updated - session.created_at).total_seconds()
+        } 
