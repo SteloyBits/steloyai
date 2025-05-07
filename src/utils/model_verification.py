@@ -1,5 +1,5 @@
 from typing import List, Dict, Any
-from huggingface_hub import HfApi, ModelFilter
+from huggingface_hub import HfApi
 import logging
 
 logger = logging.getLogger(__name__)
