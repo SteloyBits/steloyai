@@ -1,16 +1,19 @@
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
+from src.utils.prompt_manager import PromptManager
 
 class TextGenerator:
-    def __init__(self, hub_interface):
+    def __init__(self, hub_interface, prompt_manager: Optional[PromptManager] = None):
         """Initialize the text generator.
         
         Args:
             hub_interface: The HuggingFace Hub interface
+            prompt_manager: Optional PromptManager instance for handling prompts and history
         """
         self.hub = hub_interface
         self.loaded_models = {}  # Cache for loaded models
+        self.prompt_manager = prompt_manager or PromptManager()
         
     def _load_model(self, model_id: str) -> Dict[str, Any]:
         """Load a text generation model.
@@ -45,7 +48,8 @@ class TextGenerator:
                 prompt: str, 
                 model_id: Optional[str] = None, 
                 max_length: int = 256, 
-                temperature: float = 0.7) -> str:
+                temperature: float = 0.7,
+                style: str = 'default') -> str:
         """Generate text based on a prompt.
         
         Args:
@@ -53,6 +57,7 @@ class TextGenerator:
             model_id: The model ID to use (if None, uses the best model)
             max_length: Maximum length of generated text
             temperature: Temperature for sampling
+            style: The style of system prompt to use
             
         Returns:
             Generated text
@@ -60,12 +65,19 @@ class TextGenerator:
         if model_id is None:
             model_id = self.hub.get_best_model_for_task("text-generation")
         
+        # Add user message to history
+        self.prompt_manager.add_message('user', prompt)
+        
+        # Get conversation context
+        context = self.prompt_manager.get_conversation_context(style)
+        
         model_dict = self._load_model(model_id)
         model = model_dict["model"]
         tokenizer = model_dict["tokenizer"]
         
-        # Prepare the input
-        inputs = tokenizer(prompt, return_tensors="pt")
+        # Prepare the input with conversation context
+        conversation_text = "\n".join([f"{msg['role']}: {msg['content']}" for msg in context])
+        inputs = tokenizer(conversation_text, return_tensors="pt")
         if torch.cuda.is_available():
             inputs = {k: v.to("cuda") for k, v in inputs.items()}
         
@@ -84,8 +96,11 @@ class TextGenerator:
         # Decode and return
         generated_text = tokenizer.decode(output[0], skip_special_tokens=True)
         
+        # Add assistant's response to history
+        self.prompt_manager.add_message('assistant', generated_text)
+        
         # Some models include the prompt in the output, so we remove it if necessary
-        if generated_text.startswith(prompt):
-            generated_text = generated_text[len(prompt):].strip()
+        if generated_text.startswith(conversation_text):
+            generated_text = generated_text[len(conversation_text):].strip()
             
         return generated_text
