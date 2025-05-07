@@ -29,11 +29,24 @@ class TextGenerator:
         
         model_path = self.hub.download_model(model_id)
         
-        model = AutoModelForCausalLM.from_pretrained(
-            model_path,
-            torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
-            device_map="auto"
-        )
+        # Set device and dtype
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        dtype = torch.float16 if device == "cuda" else torch.float32
+        
+        try:
+            # First try with device_map
+            model = AutoModelForCausalLM.from_pretrained(
+                model_path,
+                torch_dtype=dtype,
+                device_map="auto"
+            )
+        except RuntimeError:
+            # Fallback to manual device placement
+            model = AutoModelForCausalLM.from_pretrained(
+                model_path,
+                torch_dtype=dtype
+            ).to(device)
+        
         tokenizer = AutoTokenizer.from_pretrained(model_path)
         
         # Cache the model
