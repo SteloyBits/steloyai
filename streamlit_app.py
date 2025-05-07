@@ -22,7 +22,31 @@ except ImportError as e:
     sys.exit(1)
 
 # Load configuration
-config = load_config()
+config_path = os.path.join(os.path.dirname(__file__), "config", "app_config.yaml")
+default_config = {
+    "text_generation": {
+        "available_models": ["meta-llama/Llama-2-7b-chat-hf", "mistralai/Mistral-7B-Instruct-v0.2"]
+    },
+    "text_summarization": {
+        "available_models": ["facebook/bart-large-cnn", "t5-base"]
+    },
+    "sentiment_analysis": {
+        "available_models": ["facebook/bart-large-mnli", "roberta-large-mnli"]
+    },
+    "ner": {
+        "available_models": ["dbmdz/bert-large-cased-finetuned-conll03-english"]
+    },
+    "image_generation": {
+        "available_models": ["stabilityai/stable-diffusion-xl-base-1.0", "runwayml/stable-diffusion-v1-5"]
+    },
+    "image_captioning": {
+        "available_models": ["Salesforce/blip-image-captioning-base"]
+    },
+    "object_detection": {
+        "available_models": ["facebook/detr-resnet-50"]
+    }
+}
+config = load_config(config_path, default_config)
 
 tg = TextGenerator(HuggingFaceHubInterface())
     
