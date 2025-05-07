@@ -16,37 +16,15 @@ try:
     #from src.tasks.image_generation import generate_image
     #from src.tasks.image_captioning import caption_image
     from src.utils.config import load_config
+    from src.utils.model_verification import get_verified_config
 except ImportError as e:
     st.error(f"Failed to import modules: {e}")
     st.info("Make sure you run this app from the project root directory")
     sys.exit(1)
 
-# Load configuration
+# Load configuration with verified models
 config_path = os.path.join(os.path.dirname(__file__), "config", "app_config.yaml")
-default_config = {
-    "text_generation": {
-        "available_models": ["meta-llama/Llama-2-7b-chat-hf", "mistralai/Mistral-7B-Instruct-v0.2"]
-    },
-    "text_summarization": {
-        "available_models": ["facebook/bart-large-cnn", "t5-base"]
-    },
-    "sentiment_analysis": {
-        "available_models": ["facebook/bart-large-mnli", "roberta-large-mnli"]
-    },
-    "ner": {
-        "available_models": ["dbmdz/bert-large-cased-finetuned-conll03-english"]
-    },
-    "image_generation": {
-        "available_models": ["stabilityai/stable-diffusion-xl-base-1.0", "runwayml/stable-diffusion-v1-5"]
-    },
-    "image_captioning": {
-        "available_models": ["Salesforce/blip-image-captioning-base"]
-    },
-    "object_detection": {
-        "available_models": ["facebook/detr-resnet-50"]
-    }
-}
-config = load_config(config_path, default_config)
+config = get_verified_config()
 
 tg = TextGenerator(HuggingFaceHubInterface())
     
@@ -74,6 +52,12 @@ def render_nlp_section():
     if nlp_task == "Text Generation":
         st.subheader("Text Generation")
         prompt = st.text_area("Enter your prompt:", height=150)
+        
+        # Check if there are available models
+        if not config["text_generation"]["available_models"]:
+            st.error("No text generation models are currently available. Please try again later.")
+            return
+            
         model = st.selectbox("Select Model", config["text_generation"]["available_models"])
         max_length = st.slider("Maximum Length", min_value=10, max_value=1000, value=200)
         temperature = st.slider("Temperature", min_value=0.1, max_value=1.0, value=0.7, step=0.1)
