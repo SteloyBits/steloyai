@@ -208,8 +208,8 @@ class PromptManager:
             {
                 'id': session.id,
                 'title': session.title,
-                'created_at': session.created_at.isoformat(),
-                'last_updated': session.last_updated.isoformat(),
+                'created_at': session.created_at.isoformat() if isinstance(session.created_at, datetime) else session.created_at,
+                'last_updated': session.last_updated.isoformat() if isinstance(session.last_updated, datetime) else session.last_updated,
                 'message_count': len(session.messages)
             }
             for session in self.sessions.values()
