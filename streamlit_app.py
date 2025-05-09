@@ -4,8 +4,28 @@ import sys
 from pathlib import Path
 from datetime import datetime
 
+# Set page config first, before any other Streamlit commands
+st.set_page_config(
+    page_title="SteloyAI Platform",
+    page_icon="🤖",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
 # Add the project root to the path to import project modules
 sys.path.append(str(Path(__file__).parent.parent))
+
+# Check PyTorch installation and CUDA availability
+try:
+    import torch
+    CUDA_AVAILABLE = torch.cuda.is_available()
+    DEVICE = "cuda" if CUDA_AVAILABLE else "cpu"
+except ImportError:
+    st.error("PyTorch is not installed. Please install it using: pip install torch")
+    sys.exit(1)
+except Exception as e:
+    st.error(f"Error initializing PyTorch: {e}")
+    sys.exit(1)
 
 # Import modules from the project
 try:
@@ -32,12 +52,24 @@ if 'prompt_manager' not in st.session_state:
         st.session_state.prompt_manager.create_new_session()
 
 # Load configuration with verified models
-config_path = os.path.join(os.path.dirname(__file__), "config", "app_config.yaml")
-config = get_verified_config()
+try:
+    config_path = os.path.join(os.path.dirname(__file__), "config", "app_config.yaml")
+    config = get_verified_config()
+except Exception as e:
+    st.error(f"Failed to load configuration: {e}")
+    sys.exit(1)
 
 # Initialize text generator with prompt manager
-tg = TextGenerator(HuggingFaceHubInterface(), st.session_state.prompt_manager)
-    
+try:
+    tg = TextGenerator(HuggingFaceHubInterface(), st.session_state.prompt_manager)
+except Exception as e:
+    st.error(f"Failed to initialize text generator: {e}")
+    sys.exit(1)
+
+# Add device information to session state
+if 'device' not in st.session_state:
+    st.session_state.device = DEVICE
+
 # Add custom CSS
 st.markdown("""
     <style>
@@ -149,13 +181,6 @@ st.markdown("""
 
 def set_page_config():
     """Configure the Streamlit page"""
-    st.set_page_config(
-        page_title="SteloyAI Platform",
-        page_icon="🤖",
-        layout="wide",
-        initial_sidebar_state="expanded"
-    )
-    
     st.sidebar.title("🤖 SteloyAI Platform")
     st.sidebar.markdown("""
         <div style='color: #666; font-size: 0.9em;'>
