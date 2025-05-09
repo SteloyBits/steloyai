@@ -1,6 +1,6 @@
 from typing import Optional, Dict, Any, List
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, AutoModelForSeq2SeqLM
 from src.utils.prompt_manager import PromptManager
 
 class TextGenerator:
@@ -132,3 +132,149 @@ class TextGenerator:
         self.prompt_manager.add_message('assistant', generated_text)
             
         return generated_text
+
+def summarize_text(text: str, model: str, max_length: int = 100) -> str:
+    """Summarize the given text using a specified model.
+    
+    Args:
+        text: The text to summarize
+        model: The model ID to use for summarization
+        max_length: Maximum length of the summary
+        
+    Returns:
+        Generated summary
+    """
+    # Initialize model and tokenizer
+    tokenizer = AutoTokenizer.from_pretrained(model)
+    model = AutoModelForSeq2SeqLM.from_pretrained(model)
+    
+    # Set device
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model = model.to(device)
+    
+    # Prepare input
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=1024)
+    if torch.cuda.is_available():
+        inputs = {k: v.to(device) for k, v in inputs.items()}
+    
+    # Generate summary
+    with torch.no_grad():
+        summary_ids = model.generate(
+            **inputs,
+            max_length=max_length,
+            min_length=30,
+            length_penalty=2.0,
+            num_beams=4,
+            early_stopping=True
+        )
+    
+    # Decode and return
+    summary = tokenizer.decode(summary_ids[0], skip_special_tokens=True)
+    return summary
+
+def analyze_sentiment(text: str, model: str) -> Dict[str, Any]:
+    """Analyze the sentiment of the given text.
+    
+    Args:
+        text: The text to analyze
+        model: The model ID to use for sentiment analysis
+        
+    Returns:
+        Dictionary containing sentiment analysis results
+    """
+    # Initialize model and tokenizer
+    tokenizer = AutoTokenizer.from_pretrained(model)
+    model = AutoModelForSequenceClassification.from_pretrained(model)
+    
+    # Set device
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model = model.to(device)
+    
+    # Prepare input
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
+    if torch.cuda.is_available():
+        inputs = {k: v.to(device) for k, v in inputs.items()}
+    
+    # Get predictions
+    with torch.no_grad():
+        outputs = model(**inputs)
+        logits = outputs.logits
+        probs = torch.nn.functional.softmax(logits, dim=-1)
+    
+    # Get sentiment labels
+    id2label = model.config.id2label
+    sentiment = id2label[probs.argmax().item()]
+    confidence = probs.max().item()
+    
+    return {
+        "sentiment": sentiment,
+        "confidence": confidence,
+        "details": {
+            label: float(prob)
+            for label, prob in zip(id2label.values(), probs[0])
+        }
+    }
+
+def extract_entities(text: str, model: str) -> List[Dict[str, Any]]:
+    """Extract named entities from the given text.
+    
+    Args:
+        text: The text to analyze
+        model: The model ID to use for entity extraction
+        
+    Returns:
+        List of dictionaries containing entity information
+    """
+    # Initialize model and tokenizer
+    tokenizer = AutoTokenizer.from_pretrained(model)
+    model = AutoModelForTokenClassification.from_pretrained(model)
+    
+    # Set device
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model = model.to(device)
+    
+    # Prepare input
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
+    if torch.cuda.is_available():
+        inputs = {k: v.to(device) for k, v in inputs.items()}
+    
+    # Get predictions
+    with torch.no_grad():
+        outputs = model(**inputs)
+        logits = outputs.logits
+        probs = torch.nn.functional.softmax(logits, dim=-1)
+    
+    # Get entity labels
+    id2label = model.config.id2label
+    
+    # Process predictions
+    entities = []
+    current_entity = None
+    
+    for i, (token, prob) in enumerate(zip(tokenizer.convert_ids_to_tokens(inputs["input_ids"][0]), probs[0])):
+        if token.startswith("##"):
+            if current_entity:
+                current_entity["text"] += token[2:]
+        else:
+            label_id = prob.argmax().item()
+            label = id2label[label_id]
+            
+            if label.startswith("B-"):
+                if current_entity:
+                    entities.append(current_entity)
+                current_entity = {
+                    "text": token,
+                    "type": label[2:],
+                    "confidence": float(prob[label_id])
+                }
+            elif label.startswith("I-") and current_entity:
+                current_entity["text"] += " " + token
+            else:
+                if current_entity:
+                    entities.append(current_entity)
+                    current_entity = None
+    
+    if current_entity:
+        entities.append(current_entity)
+    
+    return entities

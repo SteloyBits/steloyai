@@ -11,11 +11,11 @@ sys.path.append(str(Path(__file__).parent.parent))
 try:
     from src.tasks.text_generation import TextGenerator
     from src.models.hub_interface import HuggingFaceHubInterface
-    #from src.tasks.text_generation import summarize_text
-    #from src.tasks.text_generation import analyze_sentiment
-    #from src.tasks.text_generation import extract_entities
-    #from src.tasks.image_generation import generate_image
-    #from src.tasks.image_captioning import caption_image
+    from src.tasks.text_generation import summarize_text
+    from src.tasks.text_generation import analyze_sentiment
+    from src.tasks.text_generation import extract_entities
+    from src.tasks.image_processing import generate_image
+    from src.tasks.image_processing import caption_image
     from src.utils.config import load_config
     from src.utils.model_verification import get_verified_config
     from src.utils.prompt_manager import PromptManager
@@ -38,6 +38,115 @@ config = get_verified_config()
 # Initialize text generator with prompt manager
 tg = TextGenerator(HuggingFaceHubInterface(), st.session_state.prompt_manager)
     
+# Add custom CSS
+st.markdown("""
+    <style>
+    /* Main theme colors */
+    :root {
+        --primary-color: #1E88E5;
+        --secondary-color: #64B5F6;
+        --background-color: #F5F7FA;
+        --text-color: #2C3E50;
+    }
+    
+    /* Global styles */
+    .stApp {
+        background-color: var(--background-color);
+    }
+    
+    /* Sidebar styling */
+    .css-1d391kg {
+        background-color: #FFFFFF;
+        padding: 1rem;
+        border-right: 1px solid #E0E0E0;
+    }
+    
+    /* Headers */
+    h1, h2, h3 {
+        color: var(--text-color);
+        font-weight: 600;
+    }
+    
+    /* Buttons */
+    .stButton>button {
+        background-color: var(--primary-color);
+        color: white;
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        border: none;
+        transition: all 0.3s ease;
+    }
+    
+    .stButton>button:hover {
+        background-color: var(--secondary-color);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    /* Select boxes */
+    .stSelectbox {
+        background-color: white;
+        border-radius: 8px;
+    }
+    
+    /* Text areas */
+    .stTextArea>div>div>textarea {
+        border-radius: 8px;
+        border: 1px solid #E0E0E0;
+    }
+    
+    /* Sliders */
+    .stSlider>div>div>div {
+        background-color: var(--primary-color);
+    }
+    
+    /* Expanders */
+    .streamlit-expanderHeader {
+        background-color: white;
+        border-radius: 8px;
+        border: 1px solid #E0E0E0;
+    }
+    
+    /* Metrics */
+    .stMetric {
+        background-color: white;
+        padding: 1rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    
+    /* File uploader */
+    .stFileUploader>div>div {
+        background-color: white;
+        border-radius: 8px;
+        border: 1px solid #E0E0E0;
+    }
+    
+    /* Success/Error messages */
+    .stSuccess, .stError {
+        border-radius: 8px;
+        padding: 1rem;
+    }
+    
+    /* Chat messages */
+    .chat-message {
+        padding: 1rem;
+        border-radius: 8px;
+        margin: 0.5rem 0;
+        background-color: white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    
+    /* Custom container for better spacing */
+    .custom-container {
+        padding: 2rem;
+        background-color: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        margin: 1rem 0;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 def set_page_config():
     """Configure the Streamlit page"""
     st.set_page_config(
@@ -47,34 +156,38 @@ def set_page_config():
         initial_sidebar_state="expanded"
     )
     
-    st.sidebar.title("SteloyAI Platform")
-    st.sidebar.markdown("Your unified AI platform for NLP and vision tasks")
+    st.sidebar.title("🤖 SteloyAI Platform")
+    st.sidebar.markdown("""
+        <div style='color: #666; font-size: 0.9em;'>
+            Your unified AI platform for NLP and vision tasks
+        </div>
+    """, unsafe_allow_html=True)
 
 def render_chat_management():
     """Render chat management section in sidebar."""
     st.sidebar.markdown("---")
-    st.sidebar.subheader("Chat Management")
+    st.sidebar.subheader("💬 Chat Management")
     
-    # Search functionality
-    search_query = st.sidebar.text_input("Search chats", "")
+    # Search functionality with custom styling
+    search_query = st.sidebar.text_input("🔍 Search chats", "")
     if search_query:
         sessions = st.session_state.prompt_manager.search_sessions(search_query)
     else:
         sessions = st.session_state.prompt_manager.get_session_list()
     
-    # New chat button
+    # New chat and clear buttons with custom styling
     col1, col2 = st.sidebar.columns([3, 1])
     with col1:
-        if st.button("New Chat"):
+        if st.button("✨ New Chat", use_container_width=True):
             st.session_state.prompt_manager.create_new_session()
             st.experimental_rerun()
     with col2:
-        if st.button("Clear Current", help="Clear messages in current chat"):
+        if st.button("🗑️", help="Clear messages in current chat"):
             if st.session_state.prompt_manager.clear_current_session():
                 st.experimental_rerun()
     
-    # List of existing chats
-    st.sidebar.markdown("### Recent Chats")
+    # List of existing chats with custom styling
+    st.sidebar.markdown("### 📚 Recent Chats")
     
     if not sessions:
         st.sidebar.info("No chat history available")
@@ -83,40 +196,48 @@ def render_chat_management():
     # Sort sessions by last updated
     sessions.sort(key=lambda x: x['last_updated'], reverse=True)
     
-    # Display each session
+    # Display each session with custom styling
     for session in sessions:
-        with st.sidebar.expander(f"{session['title']} ({session['message_count']} messages)"):
+        with st.sidebar.expander(f"💭 {session['title']} ({session['message_count']} messages)"):
             # Format the title with date
             last_updated = datetime.fromisoformat(session['last_updated'])
             created_at = datetime.fromisoformat(session['created_at'])
             
-            # Display session info
-            st.write(f"Created: {created_at.strftime('%Y-%m-%d %H:%M')}")
-            st.write(f"Last updated: {last_updated.strftime('%Y-%m-%d %H:%M')}")
+            # Display session info with custom styling
+            st.markdown(f"""
+                <div style='color: #666; font-size: 0.9em;'>
+                    📅 Created: {created_at.strftime('%Y-%m-%d %H:%M')}<br>
+                    🔄 Last updated: {last_updated.strftime('%Y-%m-%d %H:%M')}
+                </div>
+            """, unsafe_allow_html=True)
             
             # Get session stats
             stats = st.session_state.prompt_manager.get_session_stats(session['id'])
             if stats:
-                st.write(f"Total messages: {stats['total_messages']}")
-                st.write(f"User messages: {stats['user_messages']}")
-                st.write(f"Assistant messages: {stats['assistant_messages']}")
+                st.markdown(f"""
+                    <div style='color: #666; font-size: 0.9em;'>
+                        📊 Total messages: {stats['total_messages']}<br>
+                        👤 User messages: {stats['user_messages']}<br>
+                        🤖 Assistant messages: {stats['assistant_messages']}
+                    </div>
+                """, unsafe_allow_html=True)
             
-            # Session actions
+            # Session actions with custom styling
             col1, col2, col3 = st.columns([2, 2, 1])
             
             with col1:
-                if st.button("Switch", key=f"switch_{session['id']}"):
+                if st.button("🔄 Switch", key=f"switch_{session['id']}", use_container_width=True):
                     st.session_state.prompt_manager.switch_session(session['id'])
                     st.experimental_rerun()
             
             with col2:
-                new_title = st.text_input("New title", session['title'], key=f"title_{session['id']}")
+                new_title = st.text_input("✏️ New title", session['title'], key=f"title_{session['id']}")
                 if new_title != session['title']:
                     st.session_state.prompt_manager.update_session_title(session['id'], new_title)
                     st.experimental_rerun()
             
             with col3:
-                if st.button("🗑️", key=f"delete_{session['id']}"):
+                if st.button("🗑️", key=f"delete_{session['id']}", use_container_width=True):
                     st.session_state.prompt_manager.delete_session(session['id'])
                     st.experimental_rerun()
 
@@ -409,19 +530,30 @@ def main():
     set_page_config()
     render_chat_management()
     
-    # Navigation in sidebar
+    # Navigation in sidebar with custom styling
+    st.sidebar.markdown("---")
     page = st.sidebar.radio(
-        "Navigate",
-        ["NLP", "Computer Vision", "About"]
+        "📱 Navigation",
+        ["NLP", "Computer Vision", "About"],
+        label_visibility="collapsed"
     )
     
-    # Add model info to sidebar
-    with st.sidebar.expander("Model Information"):
-        st.info("This application uses various AI models for different tasks. Select a task to see available models.")
+    # Add model info to sidebar with custom styling
+    with st.sidebar.expander("ℹ️ Model Information"):
+        st.info("""
+            This application uses various AI models for different tasks. 
+            Select a task to see available models.
+        """)
     
-    # Add GitHub link to sidebar
+    # Add GitHub link to sidebar with custom styling
     st.sidebar.markdown("---")
-    st.sidebar.markdown("[View on GitHub](https://github.com/steloybits/steloyai)")
+    st.sidebar.markdown("""
+        <div style='text-align: center;'>
+            <a href='https://github.com/steloybits/steloyai' target='_blank'>
+                <img src='https://img.shields.io/badge/GitHub-View%20on%20GitHub-blue?style=for-the-badge&logo=github'/>
+            </a>
+        </div>
+    """, unsafe_allow_html=True)
     
     # Display the appropriate section based on selection
     if page == "NLP":
