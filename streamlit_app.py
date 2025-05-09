@@ -214,7 +214,7 @@ st.markdown(f"""
     
     /* Slider thumb styling */
     .stSlider > div > div > div > div > div > div {{
-        background-color: var(--primary-color) !important;
+        background-color: transparent !important;
         border: 2px solid var(--card-background) !important;
     }}
     
