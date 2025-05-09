@@ -90,13 +90,16 @@ st.markdown(f"""
     <style>
     /* Theme variables */
     :root {{
-        --primary-color: #1E88E5;
-        --secondary-color: #64B5F6;
-        --background-color: {'#F5F7FA' if st.session_state.theme == 'light' else '#1E1E1E'};
-        --text-color: {'#2C3E50' if st.session_state.theme == 'light' else '#FFFFFF'};
-        --card-background: {'#FFFFFF' if st.session_state.theme == 'light' else '#2D2D2D'};
-        --border-color: {'#E0E0E0' if st.session_state.theme == 'light' else '#404040'};
-        --hover-color: {'#F0F0F0' if st.session_state.theme == 'light' else '#3D3D3D'};
+        --primary-color: {'#D4AF37' if st.session_state.theme == 'light' else '#FFD700'};
+        --secondary-color: {'#B8860B' if st.session_state.theme == 'light' else '#DAA520'};
+        --background-color: {'#FFF8E7' if st.session_state.theme == 'light' else '#1A1A1A'};
+        --text-color: {'#2C1810' if st.session_state.theme == 'light' else '#FFE5B4'};
+        --card-background: {'#FFFDF0' if st.session_state.theme == 'light' else '#2D2D2D'};
+        --border-color: {'#E6D5A7' if st.session_state.theme == 'light' else '#4D4D4D'};
+        --hover-color: {'#F5E6C3' if st.session_state.theme == 'light' else '#3D3D3D'};
+        --accent-color: {'#B8860B' if st.session_state.theme == 'light' else '#FFD700'};
+        --success-color: {'#2E7D32' if st.session_state.theme == 'light' else '#4CAF50'};
+        --error-color: {'#C62828' if st.session_state.theme == 'light' else '#F44336'};
     }}
     
     /* Theme toggle container */
@@ -121,10 +124,12 @@ st.markdown(f"""
         justify-content: space-between;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         transition: all 0.3s ease;
+        border: 2px solid var(--primary-color);
     }}
     
     .theme-toggle:hover {{
         box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        background: var(--hover-color);
     }}
     
     /* Toggle icons */
@@ -134,13 +139,13 @@ st.markdown(f"""
     }}
     
     .theme-toggle .moon {{
-        color: #f1c40f;
+        color: var(--primary-color);
         transform: {'translateX(0)' if st.session_state.theme == 'light' else 'translateX(30px)'};
         opacity: {'1' if st.session_state.theme == 'light' else '0'};
     }}
     
     .theme-toggle .sun {{
-        color: #f39c12;
+        color: var(--primary-color);
         transform: {'translateX(0)' if st.session_state.theme == 'dark' else 'translateX(-30px)'};
         opacity: {'1' if st.session_state.theme == 'dark' else '0'};
     }}
@@ -167,35 +172,41 @@ st.markdown(f"""
     .css-1d391kg {{
         background-color: var(--card-background);
         padding: 1rem;
-        border-right: 1px solid var(--border-color);
+        border-right: 2px solid var(--primary-color);
     }}
     
     /* Headers */
     h1, h2, h3 {{
-        color: var(--text-color);
+        color: var(--primary-color);
         font-weight: 600;
+        border-bottom: 2px solid var(--primary-color);
+        padding-bottom: 0.5rem;
     }}
     
     /* Buttons */
     .stButton>button {{
         background-color: var(--primary-color);
-        color: white;
+        color: var(--background-color);
         border-radius: 8px;
         padding: 0.5rem 1rem;
         border: none;
         transition: all 0.3s ease;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
     }}
     
     .stButton>button:hover {{
         background-color: var(--secondary-color);
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        transform: translateY(-1px);
     }}
     
     /* Select boxes */
     .stSelectbox {{
         background-color: var(--card-background);
         border-radius: 8px;
-        border: 1px solid var(--border-color);
+        border: 2px solid var(--primary-color);
     }}
     
     /* Text areas */
@@ -203,7 +214,8 @@ st.markdown(f"""
         background-color: var(--card-background);
         color: var(--text-color);
         border-radius: 8px;
-        border: 1px solid var(--border-color);
+        border: 2px solid var(--primary-color);
+        padding: 0.5rem;
     }}
     
     /* Slider styling */
@@ -211,19 +223,31 @@ st.markdown(f"""
         background-color: var(--primary-color);
     }}
     
+    /* Slider value styling */
+    .stSlider > div > div > div > div {{
+        background-color: transparent !important;
+        color: var(--primary-color) !important;
+        font-weight: 500;
+    }}
+    
+    /* Slider track styling */
+    .stSlider > div > div > div > div > div {{
+        background-color: var(--primary-color) !important;
+    }}
     
     /* Slider thumb styling */
     .stSlider > div > div > div > div > div > div {{
-        background-color: transparent !important;
+        background-color: var(--primary-color) !important;
         border: 2px solid var(--card-background) !important;
     }}
     
     /* Expanders */
     .streamlit-expanderHeader {{
         background-color: var(--card-background);
-        color: var(--text-color);
+        color: var(--primary-color);
         border-radius: 8px;
-        border: 1px solid var(--border-color);
+        border: 2px solid var(--primary-color);
+        font-weight: 600;
     }}
     
     /* Metrics */
@@ -233,19 +257,31 @@ st.markdown(f"""
         padding: 1rem;
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        border: 2px solid var(--primary-color);
     }}
     
     /* File uploader */
     .stFileUploader>div>div {{
         background-color: var(--card-background);
         border-radius: 8px;
-        border: 1px solid var(--border-color);
+        border: 2px solid var(--primary-color);
     }}
     
     /* Success/Error messages */
-    .stSuccess, .stError {{
+    .stSuccess {{
         border-radius: 8px;
         padding: 1rem;
+        background-color: var(--success-color);
+        color: white;
+        border: none;
+    }}
+    
+    .stError {{
+        border-radius: 8px;
+        padding: 1rem;
+        background-color: var(--error-color);
+        color: white;
+        border: none;
     }}
     
     /* Chat messages */
@@ -255,6 +291,7 @@ st.markdown(f"""
         margin: 0.5rem 0;
         background-color: var(--card-background);
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        border: 2px solid var(--primary-color);
     }}
     
     /* Custom container for better spacing */
@@ -264,6 +301,28 @@ st.markdown(f"""
         border-radius: 12px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         margin: 1rem 0;
+        border: 2px solid var(--primary-color);
+    }}
+
+    /* Radio buttons */
+    .stRadio > div {{
+        background-color: var(--card-background);
+        border-radius: 8px;
+        padding: 0.5rem;
+        border: 2px solid var(--primary-color);
+    }}
+
+    /* Checkbox */
+    .stCheckbox > div {{
+        background-color: var(--card-background);
+        border-radius: 8px;
+        padding: 0.5rem;
+        border: 2px solid var(--primary-color);
+    }}
+
+    /* Progress bar */
+    .stProgress > div > div > div {{
+        background-color: var(--primary-color);
     }}
     </style>
     
