@@ -1,6 +1,7 @@
 import streamlit as st
 import os
 import sys
+import asyncio
 from pathlib import Path
 from datetime import datetime
 
@@ -73,6 +74,16 @@ except Exception as e:
 # Add device information to session state
 if 'device' not in st.session_state:
     st.session_state.device = DEVICE
+
+# Add async event loop to session state
+if 'loop' not in st.session_state:
+    st.session_state.loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(st.session_state.loop)
+
+# Helper function to run async functions
+def run_async(coro):
+    """Run an async function in the event loop"""
+    return st.session_state.loop.run_until_complete(coro)
 
 # Add custom CSS with theme support and animated toggle
 st.markdown(f"""
@@ -547,14 +558,15 @@ def render_vision_section():
             if prompt:
                 with st.spinner("Generating image..."):
                     try:
-                        image_path = generate_image(
+                        # Run the async function using the helper
+                        image_path = run_async(generate_image(
                             prompt=prompt,
                             model=model,
                             width=width,
                             height=height,
                             guidance_scale=guidance_scale,
                             num_inference_steps=num_inference_steps
-                        )
+                        ))
                         st.success("Image Generated Successfully!")
                         st.image(image_path, caption="Generated Image", use_column_width=True)
                     except Exception as e:
@@ -579,11 +591,11 @@ def render_vision_section():
                         with open(temp_path, "wb") as f:
                             f.write(uploaded_file.getbuffer())
                         
-                        # Generate caption
-                        caption = caption_image(
+                        # Generate caption using async function
+                        caption = run_async(caption_image(
                             image_path=temp_path,
                             model=model
-                        )
+                        ))
                         st.success("Caption Generated Successfully!")
                         st.markdown(f"### Caption")
                         st.write(caption)
@@ -611,12 +623,12 @@ def render_vision_section():
                         with open(temp_path, "wb") as f:
                             f.write(uploaded_file.getbuffer())
                         
-                        # Detect objects
-                        result_image_path, detected_objects = detect_objects(
+                        # Detect objects using async function
+                        result_image_path, detected_objects = run_async(detect_objects(
                             image_path=temp_path,
                             model=model,
                             confidence_threshold=confidence_threshold
-                        )
+                        ))
                         
                         st.success("Object Detection Completed!")
                         
