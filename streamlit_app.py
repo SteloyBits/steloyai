@@ -74,7 +74,7 @@ except Exception as e:
 if 'device' not in st.session_state:
     st.session_state.device = DEVICE
 
-# Add custom CSS with theme support
+# Add custom CSS with theme support and animated toggle
 st.markdown(f"""
     <style>
     /* Theme variables */
@@ -86,6 +86,64 @@ st.markdown(f"""
         --card-background: {'#FFFFFF' if st.session_state.theme == 'light' else '#2D2D2D'};
         --border-color: {'#E0E0E0' if st.session_state.theme == 'light' else '#404040'};
         --hover-color: {'#F0F0F0' if st.session_state.theme == 'light' else '#3D3D3D'};
+    }}
+    
+    /* Theme toggle container */
+    .theme-toggle-container {{
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        z-index: 999;
+    }}
+    
+    /* Theme toggle button */
+    .theme-toggle {{
+        width: 60px;
+        height: 30px;
+        background: var(--card-background);
+        border-radius: 15px;
+        padding: 5px;
+        position: relative;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+    }}
+    
+    .theme-toggle:hover {{
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }}
+    
+    /* Toggle icons */
+    .theme-toggle i {{
+        font-size: 16px;
+        transition: all 0.3s ease;
+    }}
+    
+    .theme-toggle .moon {{
+        color: #f1c40f;
+        transform: {'translateX(0)' if st.session_state.theme == 'light' else 'translateX(30px)'};
+        opacity: {'1' if st.session_state.theme == 'light' else '0'};
+    }}
+    
+    .theme-toggle .sun {{
+        color: #f39c12;
+        transform: {'translateX(0)' if st.session_state.theme == 'dark' else 'translateX(-30px)'};
+        opacity: {'1' if st.session_state.theme == 'dark' else '0'};
+    }}
+    
+    /* Toggle slider */
+    .theme-toggle::before {{
+        content: '';
+        position: absolute;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: var(--primary-color);
+        left: {'3px' if st.session_state.theme == 'light' else '33px'};
+        transition: all 0.3s ease;
     }}
     
     /* Global styles */
@@ -137,9 +195,27 @@ st.markdown(f"""
         border: 1px solid var(--border-color);
     }}
     
-    /* Sliders */
-    .stSlider>div>div>div {{
+    /* Slider styling */
+    .stSlider > div > div > div {{
         background-color: var(--primary-color);
+    }}
+    
+    /* Slider value styling */
+    .stSlider > div > div > div > div {{
+        background-color: transparent !important;
+        color: var(--text-color) !important;
+        font-weight: 500;
+    }}
+    
+    /* Slider track styling */
+    .stSlider > div > div > div > div > div {{
+        background-color: var(--primary-color) !important;
+    }}
+    
+    /* Slider thumb styling */
+    .stSlider > div > div > div > div > div > div {{
+        background-color: var(--primary-color) !important;
+        border: 2px solid var(--card-background) !important;
     }}
     
     /* Expanders */
@@ -189,44 +265,37 @@ st.markdown(f"""
         box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         margin: 1rem 0;
     }}
-    
-    /* Theme toggle button */
-    .theme-toggle {{
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.5rem;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: background-color 0.3s ease;
-    }}
-    
-    .theme-toggle:hover {{
-        background-color: var(--hover-color);
-    }}
     </style>
+    
+    <!-- Theme toggle button -->
+    <div class="theme-toggle-container">
+        <div class="theme-toggle" onclick="document.querySelector('#theme-toggle').click()">
+            <i class="moon">🌙</i>
+            <i class="sun">☀️</i>
+        </div>
+    </div>
 """, unsafe_allow_html=True)
+
+# Add hidden button for theme toggle
+st.markdown('<div style="display: none;"><button id="theme-toggle"></button></div>', unsafe_allow_html=True)
 
 def toggle_theme():
     """Toggle between light and dark theme"""
     st.session_state.theme = 'dark' if st.session_state.theme == 'light' else 'light'
-    st.experimental_rerun()
+    st.rerun()
 
 def set_page_config():
     """Configure the Streamlit page"""
     st.sidebar.title("🤖 SteloyAI Platform")
     
-    # Add theme toggle
-    theme_icon = "🌙" if st.session_state.theme == 'light' else "☀️"
-    theme_text = "Dark Mode" if st.session_state.theme == 'light' else "Light Mode"
-    
-    if st.sidebar.button(f"{theme_icon} {theme_text}", use_container_width=True):
-        toggle_theme()
-    
-    st.sidebar.markdown("""
-        <div style='color: var(--text-color); font-size: 0.9em;'>
-            Your unified AI platform for NLP and vision tasks
-        </div>
+    # Add JavaScript for theme toggle
+    st.markdown("""
+        <script>
+        document.getElementById('theme-toggle').addEventListener('click', function() {
+            // The actual toggle is handled by the Python function
+            // This is just for the UI interaction
+        });
+        </script>
     """, unsafe_allow_html=True)
 
 def render_chat_management():
@@ -246,11 +315,11 @@ def render_chat_management():
     with col1:
         if st.button("✨ New Chat", use_container_width=True):
             st.session_state.prompt_manager.create_new_session()
-            st.experimental_rerun()
+            st.rerun()
     with col2:
         if st.button("🗑️", help="Clear messages in current chat"):
             if st.session_state.prompt_manager.clear_current_session():
-                st.experimental_rerun()
+                st.rerun()
     
     # List of existing chats with custom styling
     st.sidebar.markdown("### 📚 Recent Chats")
@@ -294,18 +363,18 @@ def render_chat_management():
             with col1:
                 if st.button("🔄 Switch", key=f"switch_{session['id']}", use_container_width=True):
                     st.session_state.prompt_manager.switch_session(session['id'])
-                    st.experimental_rerun()
+                    st.rerun()
             
             with col2:
                 new_title = st.text_input("✏️ New title", session['title'], key=f"title_{session['id']}")
                 if new_title != session['title']:
                     st.session_state.prompt_manager.update_session_title(session['id'], new_title)
-                    st.experimental_rerun()
+                    st.rerun()
             
             with col3:
                 if st.button("🗑️", key=f"delete_{session['id']}", use_container_width=True):
                     st.session_state.prompt_manager.delete_session(session['id'])
-                    st.experimental_rerun()
+                    st.rerun()
 
 def render_nlp_section():
     """Render the NLP section of the app"""
@@ -594,6 +663,12 @@ def render_about_section():
 
 def main():
     set_page_config()
+    
+    # Add theme toggle button handler
+    if st.session_state.get('_theme_toggle_clicked', False):
+        toggle_theme()
+        st.session_state._theme_toggle_clicked = False
+    
     render_chat_management()
     
     # Navigation in sidebar with custom styling
