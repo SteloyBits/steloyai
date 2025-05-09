@@ -12,6 +12,10 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Initialize theme in session state if not present
+if 'theme' not in st.session_state:
+    st.session_state.theme = 'light'
+
 # Add the project root to the path to import project modules
 sys.path.append(str(Path(__file__).parent.parent))
 
@@ -70,120 +74,157 @@ except Exception as e:
 if 'device' not in st.session_state:
     st.session_state.device = DEVICE
 
-# Add custom CSS
-st.markdown("""
+# Add custom CSS with theme support
+st.markdown(f"""
     <style>
-    /* Main theme colors */
-    :root {
+    /* Theme variables */
+    :root {{
         --primary-color: #1E88E5;
         --secondary-color: #64B5F6;
-        --background-color: #F5F7FA;
-        --text-color: #2C3E50;
-    }
+        --background-color: {'#F5F7FA' if st.session_state.theme == 'light' else '#1E1E1E'};
+        --text-color: {'#2C3E50' if st.session_state.theme == 'light' else '#FFFFFF'};
+        --card-background: {'#FFFFFF' if st.session_state.theme == 'light' else '#2D2D2D'};
+        --border-color: {'#E0E0E0' if st.session_state.theme == 'light' else '#404040'};
+        --hover-color: {'#F0F0F0' if st.session_state.theme == 'light' else '#3D3D3D'};
+    }}
     
     /* Global styles */
-    .stApp {
+    .stApp {{
         background-color: var(--background-color);
-    }
+        color: var(--text-color);
+    }}
     
     /* Sidebar styling */
-    .css-1d391kg {
-        background-color: #FFFFFF;
+    .css-1d391kg {{
+        background-color: var(--card-background);
         padding: 1rem;
-        border-right: 1px solid #E0E0E0;
-    }
+        border-right: 1px solid var(--border-color);
+    }}
     
     /* Headers */
-    h1, h2, h3 {
+    h1, h2, h3 {{
         color: var(--text-color);
         font-weight: 600;
-    }
+    }}
     
     /* Buttons */
-    .stButton>button {
+    .stButton>button {{
         background-color: var(--primary-color);
         color: white;
         border-radius: 8px;
         padding: 0.5rem 1rem;
         border: none;
         transition: all 0.3s ease;
-    }
+    }}
     
-    .stButton>button:hover {
+    .stButton>button:hover {{
         background-color: var(--secondary-color);
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
+    }}
     
     /* Select boxes */
-    .stSelectbox {
-        background-color: white;
+    .stSelectbox {{
+        background-color: var(--card-background);
         border-radius: 8px;
-    }
+        border: 1px solid var(--border-color);
+    }}
     
     /* Text areas */
-    .stTextArea>div>div>textarea {
+    .stTextArea>div>div>textarea {{
+        background-color: var(--card-background);
+        color: var(--text-color);
         border-radius: 8px;
-        border: 1px solid #E0E0E0;
-    }
+        border: 1px solid var(--border-color);
+    }}
     
     /* Sliders */
-    .stSlider>div>div>div {
+    .stSlider>div>div>div {{
         background-color: var(--primary-color);
-    }
+    }}
     
     /* Expanders */
-    .streamlit-expanderHeader {
-        background-color: white;
+    .streamlit-expanderHeader {{
+        background-color: var(--card-background);
+        color: var(--text-color);
         border-radius: 8px;
-        border: 1px solid #E0E0E0;
-    }
+        border: 1px solid var(--border-color);
+    }}
     
     /* Metrics */
-    .stMetric {
-        background-color: white;
+    .stMetric {{
+        background-color: var(--card-background);
+        color: var(--text-color);
         padding: 1rem;
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    }
+    }}
     
     /* File uploader */
-    .stFileUploader>div>div {
-        background-color: white;
+    .stFileUploader>div>div {{
+        background-color: var(--card-background);
         border-radius: 8px;
-        border: 1px solid #E0E0E0;
-    }
+        border: 1px solid var(--border-color);
+    }}
     
     /* Success/Error messages */
-    .stSuccess, .stError {
+    .stSuccess, .stError {{
         border-radius: 8px;
         padding: 1rem;
-    }
+    }}
     
     /* Chat messages */
-    .chat-message {
+    .chat-message {{
         padding: 1rem;
         border-radius: 8px;
         margin: 0.5rem 0;
-        background-color: white;
+        background-color: var(--card-background);
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    }
+    }}
     
     /* Custom container for better spacing */
-    .custom-container {
+    .custom-container {{
         padding: 2rem;
-        background-color: white;
+        background-color: var(--card-background);
         border-radius: 12px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         margin: 1rem 0;
-    }
+    }}
+    
+    /* Theme toggle button */
+    .theme-toggle {{
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }}
+    
+    .theme-toggle:hover {{
+        background-color: var(--hover-color);
+    }}
     </style>
 """, unsafe_allow_html=True)
+
+def toggle_theme():
+    """Toggle between light and dark theme"""
+    st.session_state.theme = 'dark' if st.session_state.theme == 'light' else 'light'
+    st.experimental_rerun()
 
 def set_page_config():
     """Configure the Streamlit page"""
     st.sidebar.title("🤖 SteloyAI Platform")
+    
+    # Add theme toggle
+    theme_icon = "🌙" if st.session_state.theme == 'light' else "☀️"
+    theme_text = "Dark Mode" if st.session_state.theme == 'light' else "Light Mode"
+    
+    if st.sidebar.button(f"{theme_icon} {theme_text}", use_container_width=True):
+        toggle_theme()
+    
     st.sidebar.markdown("""
-        <div style='color: #666; font-size: 0.9em;'>
+        <div style='color: var(--text-color); font-size: 0.9em;'>
             Your unified AI platform for NLP and vision tasks
         </div>
     """, unsafe_allow_html=True)
