@@ -5,6 +5,7 @@ import os
 from diffusers import StableDiffusionPipeline, StableDiffusionImg2ImgPipeline
 from transformers import AutoProcessor, AutoModelForVision2Seq
 import numpy as np
+from datetime import datetime
 
 def generate_image(
     prompt: str,
@@ -51,12 +52,13 @@ def generate_image(
             num_inference_steps=num_inference_steps
         ).images[0]
     
-    # Save the image
-    output_dir = os.path.join(os.path.dirname(__file__), "..", "..", "outputs", "images")
+    # Create output directory in the project root
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    output_dir = os.path.join(project_root, "outputs", "images")
     os.makedirs(output_dir, exist_ok=True)
     
-    # Generate unique filename
-    timestamp = torch.randint(0, 10000, (1,)).item()
+    # Generate unique filename using timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_path = os.path.join(output_dir, f"generated_{timestamp}.png")
     
     # Save the image
