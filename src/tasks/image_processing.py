@@ -139,36 +139,40 @@ async def generate_image(
     Returns:
         Path to the generated image
     """
-    # Initialize the pipeline asynchronously with caching
-    pipe = await load_model_async(model)
-    
-    # Generate the image in a thread pool since it's GPU bound
-    loop = asyncio.get_event_loop()
-    with torch.no_grad():
-        image = await loop.run_in_executor(
-            None,
-            lambda: pipe(
-                prompt=prompt,
-                negative_prompt=negative_prompt,
-                width=width,
-                height=height,
-                guidance_scale=guidance_scale,
-                num_inference_steps=num_inference_steps
-            ).images[0]
-        )
-    
-    # Create output directory in the project root
-    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    output_dir = os.path.join(project_root, "outputs", "images")
-    os.makedirs(output_dir, exist_ok=True)
-    
-    # Generate unique filename using timestamp
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_path = os.path.join(output_dir, f"generated_{timestamp}.png")
-    
-    # Save the image asynchronously
-    await save_image_async(image, output_path)
-    return output_path
+    try:
+        # Initialize the pipeline asynchronously with caching
+        pipe = await load_model_async(model)
+        
+        # Generate the image in a thread pool since it's GPU bound
+        loop = asyncio.get_event_loop()
+        with torch.no_grad():
+            image = await loop.run_in_executor(
+                None,
+                lambda: pipe(
+                    prompt=prompt,
+                    negative_prompt=negative_prompt,
+                    width=width,
+                    height=height,
+                    guidance_scale=guidance_scale,
+                    num_inference_steps=num_inference_steps
+                ).images[0]
+            )
+        
+        # Create output directory in the project root
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        output_dir = os.path.join(project_root, "outputs", "images")
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Generate unique filename using timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_path = os.path.join(output_dir, f"generated_{timestamp}.png")
+        
+        # Save the image asynchronously
+        await save_image_async(image, output_path)
+        return output_path
+    except Exception as e:
+        logger.error(f"Error generating image: {str(e)}")
+        raise
 
 async def caption_image(
     image_path: str,
@@ -187,37 +191,41 @@ async def caption_image(
     Returns:
         Generated caption
     """
-    # Load the image asynchronously
-    async with aiofiles.open(image_path, 'rb') as f:
-        image_data = await f.read()
-        image = Image.open(io.BytesIO(image_data)).convert('RGB')
-    
-    # Initialize the model and processor asynchronously with caching
-    processor = await load_processor_async(model)
-    model = await load_model_async(model, AutoModelForVision2Seq)
-    
-    # Process the image
-    inputs = processor(images=image, return_tensors="pt")
-    if torch.cuda.is_available():
-        inputs = {k: v.to("cuda") for k, v in inputs.items()}
-    
-    # Generate caption in a thread pool since it's GPU bound
-    loop = asyncio.get_event_loop()
-    with torch.no_grad():
-        output = await loop.run_in_executor(
-            None,
-            lambda: model.generate(
-                **inputs,
-                max_length=max_length,
-                num_beams=num_beams,
-                length_penalty=1.0,
-                early_stopping=True
+    try:
+        # Load the image asynchronously
+        async with aiofiles.open(image_path, 'rb') as f:
+            image_data = await f.read()
+            image = Image.open(io.BytesIO(image_data)).convert('RGB')
+        
+        # Initialize the model and processor asynchronously with caching
+        processor = await load_processor_async(model)
+        model = await load_model_async(model, AutoModelForVision2Seq)
+        
+        # Process the image
+        inputs = processor(images=image, return_tensors="pt")
+        if torch.cuda.is_available():
+            inputs = {k: v.to("cuda") for k, v in inputs.items()}
+        
+        # Generate caption in a thread pool since it's GPU bound
+        loop = asyncio.get_event_loop()
+        with torch.no_grad():
+            output = await loop.run_in_executor(
+                None,
+                lambda: model.generate(
+                    **inputs,
+                    max_length=max_length,
+                    num_beams=num_beams,
+                    length_penalty=1.0,
+                    early_stopping=True
+                )
             )
-        )
-    
-    # Decode the caption
-    caption = processor.decode(output[0], skip_special_tokens=True)
-    return caption
+        
+        # Decode the caption
+        caption = processor.decode(output[0], skip_special_tokens=True)
+        return caption
+    except Exception as e:
+        logger.error(f"Error generating caption: {str(e)}")
+        raise
 
 async def edit_image(
     image_path: str,
@@ -240,36 +248,40 @@ async def edit_image(
     Returns:
         Path to the edited image
     """
-    # Load the image asynchronously
-    async with aiofiles.open(image_path, 'rb') as f:
-        image_data = await f.read()
-        init_image = Image.open(io.BytesIO(image_data)).convert('RGB')
-    
-    # Initialize the pipeline asynchronously with caching
-    pipe = await load_model_async(model, StableDiffusionImg2ImgPipeline)
-    
-    # Generate the edited image in a thread pool since it's GPU bound
-    loop = asyncio.get_event_loop()
-    with torch.no_grad():
-        image = await loop.run_in_executor(
-            None,
-            lambda: pipe(
-                prompt=prompt,
-                image=init_image,
-                strength=strength,
-                guidance_scale=guidance_scale,
-                num_inference_steps=num_inference_steps
-            ).images[0]
-        )
-    
-    # Save the image
-    output_dir = os.path.join(os.path.dirname(__file__), "..", "..", "outputs", "images")
-    os.makedirs(output_dir, exist_ok=True)
-    
-    # Generate unique filename
-    timestamp = torch.randint(0, 10000, (1,)).item()
-    output_path = os.path.join(output_dir, f"edited_{timestamp}.png")
-    
-    # Save the image asynchronously
-    await save_image_async(image, output_path)
-    return output_path 
+    try:
+        # Load the image asynchronously
+        async with aiofiles.open(image_path, 'rb') as f:
+            image_data = await f.read()
+            init_image = Image.open(io.BytesIO(image_data)).convert('RGB')
+        
+        # Initialize the pipeline asynchronously with caching
+        pipe = await load_model_async(model, StableDiffusionImg2ImgPipeline)
+        
+        # Generate the edited image in a thread pool since it's GPU bound
+        loop = asyncio.get_event_loop()
+        with torch.no_grad():
+            image = await loop.run_in_executor(
+                None,
+                lambda: pipe(
+                    prompt=prompt,
+                    image=init_image,
+                    strength=strength,
+                    guidance_scale=guidance_scale,
+                    num_inference_steps=num_inference_steps
+                ).images[0]
+            )
+        
+        # Save the image
+        output_dir = os.path.join(os.path.dirname(__file__), "..", "..", "outputs", "images")
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Generate unique filename
+        timestamp = torch.randint(0, 10000, (1,)).item()
+        output_path = os.path.join(output_dir, f"edited_{timestamp}.png")
+        
+        # Save the image asynchronously
+        await save_image_async(image, output_path)
+        return output_path
+    except Exception as e:
+        logger.error(f"Error editing image: {str(e)}")
+        raise 
