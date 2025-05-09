@@ -4,14 +4,23 @@ from PIL import Image
 import os
 import aiofiles
 import asyncio
+import logging
 from diffusers import StableDiffusionPipeline, StableDiffusionImg2ImgPipeline
 from transformers import AutoProcessor, AutoModelForVision2Seq
 import numpy as np
 from datetime import datetime
 import io
 
+# Set up logging
+logger = logging.getLogger(__name__)
+
+# Global cache and locks for model loading
+MODEL_CACHE = {}
+MODEL_LOCKS = {}
+PROCESSOR_CACHE = {}
+
 async def load_model_async(model_id: str, pipeline_class=StableDiffusionPipeline) -> Any:
-    """Asynchronously load a model from HuggingFace Hub.
+    """Asynchronously load a model from HuggingFace Hub with caching and locking.
     
     Args:
         model_id: The model ID to load
@@ -20,20 +29,78 @@ async def load_model_async(model_id: str, pipeline_class=StableDiffusionPipeline
     Returns:
         Loaded pipeline
     """
-    # Run model loading in a thread pool since it's CPU/GPU bound
-    loop = asyncio.get_event_loop()
-    pipe = await loop.run_in_executor(
-        None,
-        lambda: pipeline_class.from_pretrained(
-            model_id,
-            torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
-            use_safetensors=True
-        )
-    )
+    # Check if model is already in cache
+    if model_id in MODEL_CACHE:
+        logger.info(f"Using cached model: {model_id}")
+        return MODEL_CACHE[model_id]
+
+    # Get or create a lock for this model_id
+    lock = MODEL_LOCKS.setdefault(model_id, asyncio.Lock())
     
-    if torch.cuda.is_available():
-        pipe = pipe.to("cuda")
-    return pipe
+    async with lock:
+        # Double-check after acquiring the lock
+        if model_id in MODEL_CACHE:
+            logger.info(f"Model {model_id} was loaded while waiting for lock")
+            return MODEL_CACHE[model_id]
+        
+        logger.info(f"Loading model {model_id} from HuggingFace Hub")
+        # Run model loading in a thread pool since it's CPU/GPU bound
+        loop = asyncio.get_event_loop()
+        try:
+            pipe = await loop.run_in_executor(
+                None,
+                lambda: pipeline_class.from_pretrained(
+                    model_id,
+                    torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+                    use_safetensors=True
+                )
+            )
+            
+            if torch.cuda.is_available():
+                pipe = pipe.to("cuda")
+            
+            # Cache the loaded model
+            MODEL_CACHE[model_id] = pipe
+            logger.info(f"Successfully loaded and cached model: {model_id}")
+            return pipe
+            
+        except Exception as e:
+            logger.error(f"Error loading model {model_id}: {str(e)}")
+            raise
+
+async def load_processor_async(model_id: str) -> Any:
+    """Asynchronously load a processor from HuggingFace Hub with caching and locking.
+    
+    Args:
+        model_id: The model ID to load processor for
+        
+    Returns:
+        Loaded processor
+    """
+    if model_id in PROCESSOR_CACHE:
+        logger.info(f"Using cached processor: {model_id}")
+        return PROCESSOR_CACHE[model_id]
+
+    lock = MODEL_LOCKS.setdefault(f"{model_id}_processor", asyncio.Lock())
+    
+    async with lock:
+        if model_id in PROCESSOR_CACHE:
+            logger.info(f"Processor {model_id} was loaded while waiting for lock")
+            return PROCESSOR_CACHE[model_id]
+        
+        logger.info(f"Loading processor {model_id} from HuggingFace Hub")
+        loop = asyncio.get_event_loop()
+        try:
+            processor = await loop.run_in_executor(
+                None,
+                lambda: AutoProcessor.from_pretrained(model_id)
+            )
+            PROCESSOR_CACHE[model_id] = processor
+            logger.info(f"Successfully loaded and cached processor: {model_id}")
+            return processor
+        except Exception as e:
+            logger.error(f"Error loading processor {model_id}: {str(e)}")
+            raise
 
 async def save_image_async(image: Image.Image, output_path: str) -> None:
     """Asynchronously save an image to disk.
@@ -72,7 +139,7 @@ async def generate_image(
     Returns:
         Path to the generated image
     """
-    # Initialize the pipeline asynchronously
+    # Initialize the pipeline asynchronously with caching
     pipe = await load_model_async(model)
     
     # Generate the image in a thread pool since it's GPU bound
@@ -125,19 +192,9 @@ async def caption_image(
         image_data = await f.read()
         image = Image.open(io.BytesIO(image_data)).convert('RGB')
     
-    # Initialize the model and processor asynchronously
-    loop = asyncio.get_event_loop()
-    processor = await loop.run_in_executor(None, lambda: AutoProcessor.from_pretrained(model))
-    model = await loop.run_in_executor(
-        None,
-        lambda: AutoModelForVision2Seq.from_pretrained(
-            model,
-            torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32
-        )
-    )
-    
-    if torch.cuda.is_available():
-        model = model.to("cuda")
+    # Initialize the model and processor asynchronously with caching
+    processor = await load_processor_async(model)
+    model = await load_model_async(model, AutoModelForVision2Seq)
     
     # Process the image
     inputs = processor(images=image, return_tensors="pt")
@@ -145,6 +202,7 @@ async def caption_image(
         inputs = {k: v.to("cuda") for k, v in inputs.items()}
     
     # Generate caption in a thread pool since it's GPU bound
+    loop = asyncio.get_event_loop()
     with torch.no_grad():
         output = await loop.run_in_executor(
             None,
@@ -187,7 +245,7 @@ async def edit_image(
         image_data = await f.read()
         init_image = Image.open(io.BytesIO(image_data)).convert('RGB')
     
-    # Initialize the pipeline asynchronously
+    # Initialize the pipeline asynchronously with caching
     pipe = await load_model_async(model, StableDiffusionImg2ImgPipeline)
     
     # Generate the edited image in a thread pool since it's GPU bound
