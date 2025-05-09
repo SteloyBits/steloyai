@@ -211,17 +211,6 @@ st.markdown(f"""
         background-color: var(--primary-color);
     }}
     
-    /* Slider value styling */
-    .stSlider > div > div > div > div {{
-        background-color: transparent !important;
-        color: var(--text-color) !important;
-        font-weight: 500;
-    }}
-    
-    /* Slider track styling */
-    .stSlider > div > div > div > div > div {{
-        background-color: var(--primary-color) !important;
-    }}
     
     /* Slider thumb styling */
     .stSlider > div > div > div > div > div > div {{
